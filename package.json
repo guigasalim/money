@@ -1,0 +1,15 @@
+{
+  "name": "money",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Controle de orcamento pessoal por envelopes, offline-first, com projecao de parcelas",
+  "type": "module",
+  "scripts": {
+    "test": "node scripts/teste-fluxo.mjs",
+    "icones": "node scripts/make-icons.mjs",
+    "servir": "python3 -m http.server 8080 --directory docs"
+  },
+  "devDependencies": {
+    "jsdom": "^26.0.0"
+  }
+}

@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>money</title>
+<meta name="description" content="Controle de orcamento pessoal por envelopes, com projecao de parcelas. Funciona offline.">
+<meta name="theme-color" content="#edebe6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#08090b" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div id="app">
+  <header class="topo">
+    <div>
+      <div class="marca">
+        <h1>money</h1>
+        <span class="espectro" aria-hidden="true">
+          <i style="background:var(--sp-vermelho)"></i><i style="background:var(--sp-laranja)"></i><i style="background:var(--sp-amarelo)"></i><i style="background:var(--sp-verde)"></i><i style="background:var(--sp-azul)"></i><i style="background:var(--sp-violeta)"></i>
+        </span>
+      </div>
+      <div class="sub" id="subtitulo">carregando…</div>
+    </div>
+    <div class="acoes-topo">
+      <button class="icone-btn" id="btn-sync" title="Sincronizar agora" aria-label="Sincronizar agora">⟳</button>
+      <button class="icone-btn" id="btn-tema" title="Alternar tema" aria-label="Alternar tema">◐</button>
+      <button class="icone-btn" id="btn-ajustes" title="Ajustes" aria-label="Ajustes">⚙</button>
+    </div>
+  </header>
+
+  <!-- primeira configuracao -->
+  <section class="tela" id="tela-onboarding">
+    <div class="pilha">
+      <div class="cartao">
+        <h2>Primeiro ajuste</h2>
+        <p style="margin-top:0;color:var(--muted);font-size:.88rem">
+          Tres informacoes e o app ja calcula quanto voce pode gastar por dia.
+          Da para mudar tudo depois em <strong>Plano</strong>.
+        </p>
+        <div class="pilha">
+          <div class="campo">
+            <label for="ob-salario">Salario liquido por mes</label>
+            <input type="number" id="ob-salario" inputmode="decimal" placeholder="0.00" step="0.01" min="0">
+            <span class="ajuda">O que realmente cai na conta, ja descontado imposto e beneficio.</span>
+          </div>
+          <div class="grade-2">
+            <div class="campo">
+              <label for="ob-dia">Dia do pagamento</label>
+              <input type="number" id="ob-dia" value="5" min="1" max="31">
+            </div>
+            <div class="campo">
+              <label for="ob-meta">Guardar (%)</label>
+              <input type="number" id="ob-meta" value="20" min="0" max="80">
+            </div>
+          </div>
+          <div class="campo">
+            <span class="ajuda">A meta de poupanca sai do topo do calculo, junto com as contas fixas.
+            Guardar so o que sobra no fim do mes quase nunca funciona — sobra menos do que se planeja.</span>
+          </div>
+          <button class="btn principal bloco" id="ob-continuar">Continuar</button>
+        </div>
+      </div>
+
+      <div class="cartao" id="ob-passo2" hidden>
+        <h2>Contas fixas e assinaturas</h2>
+        <p style="margin-top:0;color:var(--muted);font-size:.88rem">
+          Tudo que se repete todo mes com valor conhecido: moradia, luz, internet, celular, assinaturas.
+          Uma vez cadastrado voce <strong>nao lanca de novo</strong> — ja fica descontado.
+        </p>
+        <div id="ob-lista-fixos" class="envelopes"></div>
+        <div class="grade-2" style="margin-top:10px">
+          <div class="campo"><label for="ob-fixo-nome">Nome</label><input type="text" id="ob-fixo-nome" placeholder="Internet"></div>
+          <div class="campo"><label for="ob-fixo-valor">Valor</label><input type="number" id="ob-fixo-valor" inputmode="decimal" step="0.01" placeholder="0.00"></div>
+        </div>
+        <div class="campo" style="margin-top:10px">
+          <label for="ob-fixo-cat">Categoria</label>
+          <select id="ob-fixo-cat"></select>
+        </div>
+        <div class="btn-linha" style="margin-top:12px">
+          <button class="btn" id="ob-fixo-add">Adicionar</button>
+          <button class="btn principal" id="ob-finalizar">Concluir e propor envelopes</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- hoje -->
+  <section class="tela" id="tela-hoje">
+    <div class="pilha">
+      <div class="sleeve" id="painel-dia">
+        <div class="rotulo">Posso gastar hoje</div>
+        <div class="valor num" id="painel-valor">—</div>
+        <div class="nota" id="painel-nota"></div>
+        <div class="linha-sleeve">
+          <div>Livre no mes<strong id="painel-livre">—</strong></div>
+          <div>Ja gasto<strong id="painel-gasto">—</strong></div>
+          <div>Dias restantes<strong id="painel-dias">—</strong></div>
+        </div>
+        <!-- o feixe branco e a renda; as bandas sao as categorias em que ela se divide -->
+        <svg class="prisma" id="prisma" viewBox="0 0 360 150" role="img" aria-labelledby="prisma-titulo">
+          <title id="prisma-titulo">Divisao da renda do mes por categoria</title>
+          <g id="prisma-bandas"></g>
+          <rect x="0" y="72.5" width="159" height="3" fill="#f2f0eb"></rect>
+          <line x1="158.9" y1="74" x2="191.6" y2="86" stroke="#f2f0eb" stroke-width="2.4"></line>
+          <polygon points="136,116 172,50 208,116" fill="none" stroke="#6f737c" stroke-width="1.4" stroke-linejoin="round"></polygon>
+        </svg>
+        <div class="prisma-legenda" id="prisma-legenda"></div>
+      </div>
+
+      <div id="alertas-hoje" class="pilha"></div>
+
+      <div class="cartao">
+        <h2>Como a renda esta dividida</h2>
+        <div class="baldes" id="baldes"></div>
+        <p style="color:var(--muted);font-size:.72rem;margin:11px 0 0">
+          Referencia 50 / 30 / 20 — essencial, qualidade de vida, futuro.
+        </p>
+      </div>
+
+      <div class="cartao">
+        <h2>Envelopes com menos folga</h2>
+        <div class="envelopes" id="envelopes-risco"></div>
+      </div>
+
+      <div class="cartao">
+        <h2>Ultimos lancamentos</h2>
+        <div id="ultimos"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- envelopes -->
+  <section class="tela" id="tela-envelopes">
+    <div class="pilha">
+      <div class="cartao">
+        <div class="nav-mes">
+          <div>
+            <div class="secao-titulo">Dinheiro variavel do mes</div>
+            <div class="num" id="env-disponivel" style="font-size:1.5rem;font-weight:600;margin-top:3px">—</div>
+          </div>
+          <button class="btn" id="btn-propor">Propor limites</button>
+        </div>
+        <div id="env-sobra-aviso" style="margin-top:12px"></div>
+      </div>
+      <div class="cartao">
+        <h2>Essencial</h2>
+        <div class="envelopes" id="env-essencial"></div>
+      </div>
+      <div class="cartao">
+        <h2>Qualidade de vida</h2>
+        <div class="envelopes" id="env-qualidade"></div>
+      </div>
+      <div class="cartao">
+        <h2>Comprometido — nao consome envelope</h2>
+        <div class="envelopes" id="env-fixos"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- extrato -->
+  <section class="tela" id="tela-extrato">
+    <div class="pilha">
+      <div class="cartao">
+        <div class="nav-mes">
+          <button class="icone-btn" id="mes-ant" aria-label="Mes anterior">‹</button>
+          <div class="rot" id="mes-rotulo">—</div>
+          <button class="icone-btn" id="mes-prox" aria-label="Proximo mes">›</button>
+        </div>
+      </div>
+      <div class="cartao"><div id="extrato-lista"></div></div>
+    </div>
+  </section>
+
+  <!-- plano -->
+  <section class="tela" id="tela-plano">
+    <div class="pilha">
+      <div class="cartao">
+        <h2>Renda e meta</h2>
+        <div class="grade-2">
+          <div class="campo"><label for="pl-salario">Salario liquido</label><input type="number" id="pl-salario" inputmode="decimal" step="0.01"></div>
+          <div class="campo"><label for="pl-dia">Dia do pagamento</label><input type="number" id="pl-dia" min="1" max="31"></div>
+        </div>
+        <div class="grade-2" style="margin-top:10px">
+          <div class="campo"><label for="pl-meta-modo">Meta de poupanca</label>
+            <select id="pl-meta-modo"><option value="pct">Percentual da renda</option><option value="valor">Valor fixo</option></select>
+          </div>
+          <div class="campo"><label for="pl-meta">Quanto</label><input type="number" id="pl-meta" inputmode="decimal" step="0.01"></div>
+        </div>
+      </div>
+
+      <div class="cartao">
+        <h2>Reserva de emergencia</h2>
+        <p style="margin:-4px 0 12px;color:var(--muted);font-size:.82rem">
+          Antes de investir, o colchao. Sem ele, o primeiro imprevisto vira resgate no prejuizo.
+        </p>
+        <div class="grade-2">
+          <div class="campo"><label for="pl-reserva">Ja guardado</label><input type="number" id="pl-reserva" inputmode="decimal" step="0.01"></div>
+          <div class="campo"><label for="pl-reserva-meses">Alvo em meses de custo fixo</label><input type="number" id="pl-reserva-meses" min="1" max="24"></div>
+        </div>
+        <div style="margin-top:12px"><div class="barra"><i id="reserva-barra" style="width:0%"></i></div></div>
+        <p id="reserva-texto" style="font-size:.83rem;color:var(--muted);margin:9px 0 0"></p>
+      </div>
+
+      <div class="cartao">
+        <h2>Contas fixas e assinaturas</h2>
+        <div class="envelopes" id="lista-fixos"></div>
+        <div class="grade-2" style="margin-top:12px">
+          <div class="campo"><label for="fx-nome">Nome</label><input type="text" id="fx-nome" placeholder="Netflix"></div>
+          <div class="campo"><label for="fx-valor">Valor mensal</label><input type="number" id="fx-valor" inputmode="decimal" step="0.01" placeholder="0.00"></div>
+        </div>
+        <div class="campo" style="margin-top:10px"><label for="fx-cat">Categoria</label><select id="fx-cat"></select></div>
+        <button class="btn bloco" id="fx-add" style="margin-top:12px">Adicionar fixo</button>
+      </div>
+
+      <div class="cartao">
+        <h2>Parcelas de cartao</h2>
+        <p style="margin:-4px 0 12px;color:var(--muted);font-size:.82rem">
+          Uma compra em 10x nao custa a parcela: custa os proximos dez meses.
+          Preencha abaixo e veja o impacto antes de confirmar.
+        </p>
+        <div class="envelopes" id="lista-parcelas"></div>
+        <div class="grade-2" style="margin-top:12px">
+          <div class="campo"><label for="pc-desc">Descricao</label><input type="text" id="pc-desc" placeholder="Celular"></div>
+          <div class="campo"><label for="pc-total">Valor total</label><input type="number" id="pc-total" inputmode="decimal" step="0.01" placeholder="0.00"></div>
+        </div>
+        <div class="grade-2" style="margin-top:10px">
+          <div class="campo"><label for="pc-n">Parcelas</label><input type="number" id="pc-n" min="1" max="60" value="10"></div>
+          <div class="campo"><label for="pc-inicio">Primeira em</label><input type="month" id="pc-inicio"></div>
+        </div>
+        <div id="pc-simulacao" style="margin-top:12px"></div>
+        <button class="btn bloco principal" id="pc-add" style="margin-top:10px">Adicionar parcelamento</button>
+      </div>
+
+      <div class="cartao">
+        <h2>Proximos 12 meses ja comprometidos</h2>
+        <div class="rolagem-x">
+          <table>
+            <thead><tr><th>Mes</th><th>Fixos</th><th>Parcelas</th><th>Meta</th><th>Sobra variavel</th></tr></thead>
+            <tbody id="projecao-corpo"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ajustes -->
+  <section class="tela" id="tela-ajustes">
+    <div class="pilha">
+      <div class="cartao">
+        <h2>Sincronizacao com o GitHub</h2>
+        <div id="sync-estado" style="margin-bottom:12px"></div>
+        <div class="campo">
+          <label for="sy-repo">Repositorio privado dos dados</label>
+          <input type="text" id="sy-repo" placeholder="seu-usuario/money-data" autocomplete="off" spellcheck="false">
+          <span class="ajuda">Formato usuario/repositorio. Precisa ser <strong>privado</strong>.</span>
+        </div>
+        <div class="campo" style="margin-top:10px">
+          <label for="sy-token">Token fine-grained</label>
+          <input type="password" id="sy-token" placeholder="github_pat_…" autocomplete="off" spellcheck="false">
+          <span class="ajuda">Fica guardado so neste aparelho e so e enviado para api.github.com.
+          Use um token limitado a este repositorio, com permissao Contents: Read and write.</span>
+        </div>
+        <div class="grade-2" style="margin-top:10px">
+          <div class="campo"><label for="sy-branch">Branch</label><input type="text" id="sy-branch" value="main"></div>
+          <div class="campo"><label for="sy-caminho">Arquivo</label><input type="text" id="sy-caminho" value="dados.json"></div>
+        </div>
+        <div class="btn-linha" style="margin-top:12px">
+          <button class="btn" id="sy-testar">Testar conexao</button>
+          <button class="btn principal" id="sy-salvar">Salvar e sincronizar</button>
+        </div>
+        <div id="sy-resultado" style="margin-top:12px"></div>
+      </div>
+
+      <div class="cartao">
+        <h2>Copia de seguranca</h2>
+        <p style="margin-top:0;color:var(--muted);font-size:.85rem">Funciona mesmo sem a sincronizacao ligada.</p>
+        <div class="btn-linha">
+          <button class="btn" id="btn-exportar">Exportar arquivo</button>
+          <button class="btn" id="btn-importar">Importar arquivo</button>
+          <input type="file" id="arquivo-importar" accept="application/json,.json" class="oculto">
+        </div>
+      </div>
+
+      <div class="cartao">
+        <h2>Som da caixa registradora</h2>
+        <p style="margin-top:0;color:var(--muted);font-size:.85rem">
+          Um clique curto ao salvar um lancamento, como a abertura da faixa.
+          Desligado por padrao — voce vai usar isto no mercado.
+        </p>
+        <label style="display:flex;align-items:center;gap:9px;font-size:.88rem;font-weight:600">
+          <input type="checkbox" id="opt-som" style="width:auto"> Tocar ao salvar
+        </label>
+      </div>
+
+      <div class="cartao">
+        <h2>Zona de risco</h2>
+        <p style="margin-top:0;color:var(--muted);font-size:.85rem">
+          Apaga tudo que esta neste aparelho. O que ja subiu para o repositorio continua la.
+        </p>
+        <button class="btn perigo" id="btn-zerar">Apagar dados deste aparelho</button>
+      </div>
+
+      <p class="credito">
+        <strong>money</strong> · versao <span id="versao-app">1.0.0</span> · dados no proprio aparelho, funciona sem internet<br>
+        O nome e o prisma sao de <em>The Dark Side of the Moon</em>, Pink Floyd, 1973.<br>
+        A luz branca e a sua renda. As cores sao o que ela vira.
+      </p>
+    </div>
+  </section>
+</div>
+
+<!-- folha de lancamento -->
+<div class="folha" id="folha" hidden role="dialog" aria-modal="true" aria-label="Novo lancamento">
+  <div class="folha-topo">
+    <button class="icone-btn" id="folha-fechar" aria-label="Fechar">✕</button>
+    <h2 id="folha-titulo">Lancar</h2>
+    <button class="icone-btn" id="folha-mais" title="Mais opcoes" aria-label="Mais opcoes">⋯</button>
+  </div>
+
+  <div class="alternador" role="group" aria-label="Tipo de lancamento">
+    <button id="tipo-despesa" aria-pressed="true">Gasto</button>
+    <button id="tipo-receita" aria-pressed="false">Entrada</button>
+  </div>
+
+  <div class="mostrador">
+    <div class="v zero num" id="mostrador">R$ 0,00</div>
+    <div class="cat" id="mostrador-cat">escolha uma categoria</div>
+  </div>
+
+  <div id="folha-extra" hidden class="pilha" style="padding-bottom:12px">
+    <div class="campo"><label for="lc-desc">Descricao</label><input type="text" id="lc-desc" placeholder="opcional"></div>
+    <div class="grade-2">
+      <div class="campo"><label for="lc-data">Data</label><input type="date" id="lc-data"></div>
+      <div class="campo"><label for="lc-forma">Forma</label>
+        <select id="lc-forma">
+          <option value="debito">Debito</option>
+          <option value="pix">Pix</option>
+          <option value="dinheiro">Dinheiro</option>
+          <option value="credito">Credito a vista</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn perigo" id="lc-apagar" hidden>Apagar lancamento</button>
+  </div>
+
+  <div class="cats" id="folha-cats"></div>
+
+  <div class="teclado" id="teclado">
+    <button data-t="1">1</button><button data-t="2">2</button><button data-t="3">3</button>
+    <button data-t="4">4</button><button data-t="5">5</button><button data-t="6">6</button>
+    <button data-t="7">7</button><button data-t="8">8</button><button data-t="9">9</button>
+    <button data-t="00">00</button><button data-t="0">0</button>
+    <button data-t="del" class="apagar" aria-label="Apagar digito">⌫</button>
+  </div>
+
+  <button class="btn principal bloco" id="folha-salvar" style="margin-bottom:16px" disabled>Salvar</button>
+</div>
+
+<div class="torrada" id="torrada" hidden role="status" aria-live="polite"></div>
+
+<nav class="nav" aria-label="Navegacao principal">
+  <button data-tela="hoje" aria-current="page"><span class="ic">◉</span><span>Hoje</span></button>
+  <button data-tela="envelopes"><span class="ic">▤</span><span>Envelopes</span></button>
+  <button class="fab" id="btn-lancar" aria-label="Novo lancamento"><span class="ic">+</span><span>Lancar</span></button>
+  <button data-tela="extrato"><span class="ic">≡</span><span>Extrato</span></button>
+  <button data-tela="plano"><span class="ic">◈</span><span>Plano</span></button>
+</nav>
+
+<script type="module" src="js/ui.js"></script>
+</body>
+</html>

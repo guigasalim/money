@@ -1,0 +1,7 @@
+node_modules/
+.DS_Store
+*.log
+# nunca versionar dados nem segredos neste repositorio publico
+dados.json
+*.token
+.env
