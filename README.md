@@ -69,12 +69,49 @@ O token nunca entra no estado sincronizado e só é enviado para `api.github.com
 Use um token limitado ao repositório de dados, com `Contents: Read and write` —
 se vazar, o estrago para aí.
 
-## Publicar
+## Publicar e testar no Windows
 
-1. `git remote add origin git@github.com:SEU-USUARIO/money.git && git push -u origin main`
-2. No repositório: **Settings → Pages → Source: `main` / pasta `/docs`**
-3. Abra a URL no celular → menu do Chrome → **Instalar aplicativo**
-4. No app: **Ajustes → Sincronização**, informe `SEU-USUARIO/money-data` e o token
+Os scripts em `windows/` fazem o caminho todo. Rode em ordem, com duplo clique:
+
+| Script | O que faz |
+| --- | --- |
+| `1-verificar.bat` | Diz o que já existe na máquina e o que falta |
+| `2-instalar.bat` | Instala Git, Node, GitHub CLI e ADB via `winget`, e roda `npm install` |
+| `3-configurar-git.bat` | Identidade local, cria os dois repositórios, publica e liga o Pages |
+| `4-testar-pc.bat` | Roda o teste de fluxo e sobe o app em `localhost:8080` |
+| `5-testar-celular.bat` | `adb reverse` pelo cabo e sobe o servidor para o celular |
+| `6-gerar-apk.bat` | Empacota com Capacitor — só se o PWA instalado não bastar |
+
+Depois do `2-instalar.bat`, **feche e reabra o terminal**: o `PATH` só atualiza
+em sessão nova.
+
+O `3-configurar-git.bat` grava a identidade pessoal (`guigasalim`) **apenas
+neste repositório** — a configuração global da máquina não é tocada, que é o que
+mantém finanças pessoais fora da conta corporativa.
+
+### Por que o teste no celular é por cabo
+
+Service worker só funciona em HTTPS ou em `localhost`. Abrir pelo IP da rede
+(`http://192.168.x.x:8080`) carrega o app, mas sem offline e sem convite de
+instalação — o que esconde justamente o que você precisa validar. O
+`adb reverse tcp:8080 tcp:8080` faz o celular tratar a porta do PC como
+`localhost`, e aí o contexto passa a ser seguro.
+
+Para habilitar no RedMi, uma vez só: Ajustes → Sobre o telefone → 7 toques em
+"Versão MIUI" → Ajustes → Configurações adicionais → Opções do desenvolvedor →
+**Depuração USB**. Use um cabo de dados, não só de carga.
+
+Sem cabo, a alternativa é publicar no Pages e abrir
+`https://guigasalim.github.io/money/` — que já é HTTPS.
+
+### Token de sincronização
+
+Só isso é manual, porque envolve um segredo:
+
+1. https://github.com/settings/personal-access-tokens/new
+2. *Only select repositories* → `money-data`
+3. *Repository permissions* → **Contents: Read and write** (só isso)
+4. Cole em **Ajustes → Sincronização** dentro do app, e toque em *Testar conexão*
 
 ## Virar APK
 
