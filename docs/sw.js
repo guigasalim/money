@@ -4,7 +4,7 @@
 // stale-while-revalidate. A API do GitHub nunca entra em cache: dado
 // financeiro servido de cache velho seria pior que erro de rede.
 
-const VERSAO = 'money-v1';
+const VERSAO = 'money-9900f07bd5';
 const SHELL = `${VERSAO}-shell`;
 const FONTES = `${VERSAO}-fontes`;
 

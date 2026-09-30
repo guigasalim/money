@@ -8,6 +8,7 @@ import { JSDOM } from 'jsdom';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import { calcularVersao, versaoGravada } from './versao-sw.mjs';
 
 const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'docs');
 const html = readFileSync(`${RAIZ}/index.html`, 'utf8');
@@ -50,7 +51,8 @@ const digitar = (s, v) => {
   n.dispatchEvent(new window.Event('change', { bubbles: true }));
 };
 const texto = (s) => q(s)?.textContent.trim();
-const ok = (cond, msg) => console.log(`${cond ? 'ok  ' : 'FALHA'}  ${msg}`);
+let falhas = 0;
+const ok = (cond, msg) => { if (!cond) falhas++; console.log(`${cond ? 'ok  ' : 'FALHA'}  ${msg}`); };
 
 await import(`file://${RAIZ}/js/ui.js`);
 await new Promise((r) => setTimeout(r, 60));
@@ -135,6 +137,10 @@ ok(gravado.fixos.length === 3, 'fixos persistidos');
 ok(gravado.parcelamentos.length === 1, 'parcelamento persistido');
 ok(!JSON.stringify(gravado).includes('github_pat'), 'nenhum token dentro do estado');
 
+console.log('\n--- service worker ---');
+const versao = calcularVersao();
+ok(versaoGravada() === versao, `VERSAO do sw.js acompanha o shell${versaoGravada() === versao ? '' : ` -- rode npm run versao (${versaoGravada()} -> ${versao})`}`);
+
 console.log('\n--- resultado ---');
 ok(erros.length === 0, erros.length ? 'erros: ' + erros.join(' | ') : 'nenhum erro de runtime em todo o fluxo');
-process.exit(erros.length ? 1 : 0);
+process.exit(falhas ? 1 : 0);

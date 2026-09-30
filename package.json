@@ -7,7 +7,8 @@
   "scripts": {
     "test": "node scripts/teste-fluxo.mjs",
     "icones": "node scripts/make-icons.mjs",
-    "servir": "node scripts/servidor.mjs"
+    "servir": "node scripts/servidor.mjs",
+    "versao": "node scripts/versao-sw.mjs"
   },
   "devDependencies": {
     "jsdom": "^26.0.0"
