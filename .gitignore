@@ -5,3 +5,6 @@ node_modules/
 dados.json
 *.token
 .env
+
+# contexto local do Claude Code -- nao vai para o repositorio publico
+CLAUDE.md
